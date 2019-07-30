@@ -52,29 +52,20 @@ type Report struct {
 	// made to the report structure. Version applies to the top-level report and all sub-reports.
 	Version int
 
-	Network NetworkReport
+	Ping PingReport
 }
 
 // Run a full diagnostics report.
 func Run(cfg Config) Report {
 	return Report{
 		Version: reportVersion,
-		Network: generateNetworkReport(cfg),
+		Ping:    generatePingReport(cfg.PingConfig),
 	}
 }
 
 // HasErrors returns true if this report contains any errors.
 func (rp Report) HasErrors() bool {
 	return hasErrors(rp)
-}
-
-// NetworkReport contains information about the quality of the network connection.
-type NetworkReport struct {
-	Ping PingReport
-}
-
-func generateNetworkReport(cfg Config) NetworkReport {
-	return NetworkReport{generatePingReport(cfg.PingConfig)}
 }
 
 // PingReport is part of the NetworkReport.
