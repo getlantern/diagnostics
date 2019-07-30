@@ -13,20 +13,33 @@ const (
 	// The version encoded in reports. This only needs to change if breaking changes are made to the
 	// report structure. This version applies to the top-level report and all sub-reports.
 	reportVersion = 1
-
-	// Number of packets to send per address in ping tests.
-	pingCount = 5
 )
 
 var (
-	pingAddresses = []string{
-		"8.8.8.8", // TODO: replace me (this is just a placeholder)
-	}
-
 	// Forces the ping report to run on non-Windows systems. Useful for testing, but requires root
 	// permissions. See generatePingReport().
 	forcePingReport = false
 )
+
+// Config for running diagnostics.
+type Config struct {
+	PingConfig PingConfig
+}
+
+// PingConfig defines configuration for diagnostics run using an ICMP ping utility.
+type PingConfig struct {
+	Addresses []string
+
+	// Count is the number of packets sent per address. Defaults to 1.
+	Count int
+}
+
+func (cfg PingConfig) count() int {
+	if cfg.Count <= 0 {
+		return 1
+	}
+	return cfg.Count
+}
 
 // The report sturctures below define how diagnostic reports are encoded. All structs represented as
 // fields and sub-fields of Report should be JSON-friendly. Care should be taken to avoid making
@@ -43,10 +56,10 @@ type Report struct {
 }
 
 // Run a full diagnostics report.
-func Run() Report {
+func Run(cfg Config) Report {
 	return Report{
 		Version: reportVersion,
-		Network: generateNetworkReport(),
+		Network: generateNetworkReport(cfg),
 	}
 }
 
@@ -60,8 +73,8 @@ type NetworkReport struct {
 	Ping PingReport
 }
 
-func generateNetworkReport() NetworkReport {
-	return NetworkReport{generatePingReport()}
+func generateNetworkReport(cfg Config) NetworkReport {
+	return NetworkReport{generatePingReport(cfg.PingConfig)}
 }
 
 // PingReport is part of the NetworkReport.
@@ -81,7 +94,7 @@ type PingStatistics struct {
 	Error *string `json:",omitempty"`
 }
 
-func generatePingReport() PingReport {
+func generatePingReport(cfg PingConfig) PingReport {
 	if runtime.GOOS != "windows" && !forcePingReport {
 		// We need root permissions to ping on Linux and Mac OS:
 		// https://github.com/sparrc/go-ping#note-on-windows-support
@@ -92,10 +105,10 @@ func generatePingReport() PingReport {
 	}
 
 	var (
-		stats = make(chan PingStatistics, len(pingAddresses))
+		stats = make(chan PingStatistics, len(cfg.Addresses))
 		wg    = new(sync.WaitGroup)
 	)
-	for _, a := range pingAddresses {
+	for _, a := range cfg.Addresses {
 		wg.Add(1)
 		go func(addr string) {
 			defer wg.Done()
@@ -104,7 +117,7 @@ func generatePingReport() PingReport {
 				stats <- PingStatistics{Error: sPtr(err.Error()), Statistics: ping.Statistics{Addr: addr}}
 				return
 			}
-			p.Count = pingCount
+			p.Count = cfg.count()
 			p.SetPrivileged(true)
 			p.Run()
 			stats <- PingStatistics{Statistics: *p.Statistics()}
