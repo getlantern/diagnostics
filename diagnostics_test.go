@@ -1,77 +1,15 @@
 package diagnostics
 
 import (
-	"encoding/json"
-	"fmt"
+	"os"
 	"testing"
 
+	"github.com/go-yaml/yaml"
 	"github.com/stretchr/testify/assert"
 )
 
-type testStruct struct {
-	S     *testStruct            `json:",omitempty"`
-	M     map[string]*testStruct `json:",omitempty"`
-	Error *string                `json:",omitempty"`
-}
-
-func (ts testStruct) String() string {
-	b, err := json.MarshalIndent(ts, "", "  ")
-	if err != nil {
-		return fmt.Sprintf("%#v", ts)
-	}
-	return string(b)
-}
-
-func TestHasErrors(t *testing.T) {
-	for _, testCase := range []struct {
-		input    interface{}
-		expected bool
-	}{
-		{
-			input: testStruct{
-				Error: sPtr(""),
-			},
-			expected: true,
-		},
-		{
-			input: testStruct{
-				S: &testStruct{
-					Error: sPtr(""),
-				},
-			},
-			expected: true,
-		},
-		{
-			input: testStruct{
-				M: map[string]*testStruct{
-					"": &testStruct{
-						Error: sPtr(""),
-					},
-				},
-			},
-			expected: true,
-		},
-		{
-			input:    testStruct{},
-			expected: false,
-		},
-		{
-			input: testStruct{
-				S: &testStruct{},
-			},
-			expected: false,
-		},
-		{
-			input: testStruct{
-				M: map[string]*testStruct{
-					"": &testStruct{},
-				},
-			},
-			expected: false,
-		},
-	} {
-		assert.NotPanics(t, func() {
-			assert.Equal(t, testCase.expected, hasErrors(testCase.input), "input:\n%v", testCase.input)
-		}, "input:\n%v", testCase.input)
-	}
+func TestPing(t *testing.T) {
+	results := Run(2, &Ping{Address: "8.8.8.8", Count: 1, Force: true}, &Ping{Address: "999.999.999.999", Count: 1, Force: true})
+	err := yaml.NewEncoder(os.Stdout).Encode(results)
+	assert.NoError(t, err)
 }
