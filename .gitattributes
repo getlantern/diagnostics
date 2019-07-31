@@ -1,0 +1,1 @@
+internal/diagbin/embedded_* filter=lfs diff=lfs merge=lfs -text

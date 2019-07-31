@@ -3,7 +3,6 @@ package diagnostics
 
 import (
 	"reflect"
-	"runtime"
 	"sync"
 
 	ping "github.com/sparrc/go-ping"
@@ -13,12 +12,6 @@ const (
 	// The version encoded in reports. This only needs to change if breaking changes are made to the
 	// report structure. This version applies to the top-level report and all sub-reports.
 	reportVersion = 1
-)
-
-var (
-	// Forces the ping report to run on non-Windows systems. Useful for testing, but requires root
-	// permissions. See RunPingTest().
-	forcePingReport = false
 )
 
 // Config for running diagnostics.
@@ -88,17 +81,8 @@ type PingStatistics struct {
 	Error *string `json:",omitempty"`
 }
 
-// RunPingTest runs a diagnostic using ICMP pings.
+// RunPingTest runs a diagnostic using ICMP pings. Requires root permissions on Unix systems.
 func RunPingTest(cfg PingConfig) PingReport {
-	if runtime.GOOS != "windows" && !forcePingReport {
-		// We need root permissions to ping on Linux and Mac OS:
-		// https://github.com/sparrc/go-ping#note-on-windows-support
-		//
-		// We could just run the ping command on those systems and parse the output, but that
-		// doesn't seem worth the effort at the moment.
-		return PingReport{Error: sPtr("ping report is currently only supported on windows")}
-	}
-
 	var (
 		stats = make(chan PingStatistics, len(cfg.Addresses))
 		wg    = new(sync.WaitGroup)
