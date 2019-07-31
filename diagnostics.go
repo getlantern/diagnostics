@@ -17,13 +17,14 @@ const (
 
 var (
 	// Forces the ping report to run on non-Windows systems. Useful for testing, but requires root
-	// permissions. See generatePingReport().
+	// permissions. See RunPingTest().
 	forcePingReport = false
 )
 
 // Config for running diagnostics.
 type Config struct {
-	PingConfig PingConfig
+	// PingConfig, if non-nil, defines how the ping test should be run.
+	PingConfig *PingConfig
 }
 
 // PingConfig defines configuration for diagnostics run using an ICMP ping utility.
@@ -52,15 +53,17 @@ type Report struct {
 	// made to the report structure. Version applies to the top-level report and all sub-reports.
 	Version int
 
-	Ping PingReport
+	Ping *PingReport `json:",omitempty"`
 }
 
 // Run a full diagnostics report.
 func Run(cfg Config) Report {
-	return Report{
-		Version: reportVersion,
-		Ping:    generatePingReport(cfg.PingConfig),
+	r := Report{Version: reportVersion}
+	if cfg.PingConfig != nil {
+		pingReport := RunPingTest(*cfg.PingConfig)
+		r.Ping = &pingReport
 	}
+	return r
 }
 
 // HasErrors returns true if this report contains any errors.
@@ -85,7 +88,8 @@ type PingStatistics struct {
 	Error *string `json:",omitempty"`
 }
 
-func generatePingReport(cfg PingConfig) PingReport {
+// RunPingTest runs a diagnostic using ICMP pings.
+func RunPingTest(cfg PingConfig) PingReport {
 	if runtime.GOOS != "windows" && !forcePingReport {
 		// We need root permissions to ping on Linux and Mac OS:
 		// https://github.com/sparrc/go-ping#note-on-windows-support
