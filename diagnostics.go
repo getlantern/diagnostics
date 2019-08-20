@@ -5,6 +5,7 @@ import (
 	"errors"
 	"runtime"
 	"sync"
+	"time"
 
 	ping "github.com/sparrc/go-ping"
 )
@@ -87,6 +88,11 @@ func (p *Ping) Run() (*PingResult, error) {
 	} else {
 		pinger.Count = p.Count
 	}
+
+	// The default interval between packets is 1s. If we wait a bit longer than pinger.Count
+	// seconds, we should receive all responses.
+	pinger.Timeout = time.Second*time.Duration(pinger.Count) + time.Second
+
 	pinger.SetPrivileged(true)
 	pinger.Run()
 	return &PingResult{Ping: p, Statistics: pinger.Statistics()}, nil
