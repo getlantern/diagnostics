@@ -7,7 +7,7 @@ import (
 	"sync"
 	"time"
 
-	ping "github.com/sparrc/go-ping"
+	ping "github.com/go-ping/ping"
 )
 
 var (
